@@ -1,0 +1,6 @@
+name,previous_league,age,price,prev_league_minutes,goals,assists,xg,xa,xgi,league_tax
+Victor Munoz,La Liga,23,6.5,2100,7,5,6.5,4.8,11.3,0.85
+Ronald Araujo,La Liga,27,5.5,2800,2,1,1.8,0.5,2.3,0.85
+Bazoumana Tour,Ligue 1,20,6.0,1500,4,3,3.2,2.1,5.3,0.75
+Gonzalo Garca,La Liga,22,6.0,1800,5,2,4.8,1.9,6.7,0.85
+Promise David,Jupiler Pro,21,6.0,1200,6,1,5.1,0.8,5.9,0.6

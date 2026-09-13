@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FPL AI | Engine</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet" />
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #09090b; color: #fafafa; }
+        
+        /* Ultra modern scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #09090b; }
+        ::-webkit-scrollbar-thumb { background: #27272a; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #3f3f46; }
+
+        /* Modern pitch */
+        .pitch-container {
+            background: linear-gradient(180deg, #166534 0%, #14532d 100%);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            box-shadow: inset 0 0 100px rgba(0,0,0,0.5);
+            position: relative;
+        }
+        
+        /* Subtle, elegant pitch lines */
+        .pitch-lines::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 20%; right: 20%; height: 16%;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-top: none;
+        }
+        .pitch-lines::after {
+            content: '';
+            position: absolute;
+            bottom: 0; left: 20%; right: 20%; height: 16%;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-bottom: none;
+        }
+        .pitch-center-line {
+            position: absolute;
+            top: 50%; left: 0; right: 0; height: 1px;
+            background: rgba(255, 255, 255, 0.15);
+        }
+        .pitch-center-circle {
+            position: absolute;
+            top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 120px; height: 120px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 50%;
+        }
+
+        /* SaaS Card styling */
+        .surface-card {
+            background-color: #18181b; /* Zinc 900 */
+            border: 1px solid #27272a; /* Zinc 800 */
+        }
+        
+        /* Player Card */
+        .player-card {
+            background: #27272a;
+            border: 1px solid #3f3f46;
+            transition: all 0.2s ease;
+        }
+        .player-card:hover {
+            border-color: #10b981;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px -5px rgba(16, 185, 129, 0.1);
+        }
+        
+        .captain-badge {
+            background: linear-gradient(135deg, #fbbf24 0%, #d97706 100%);
+            color: #000;
+            box-shadow: 0 0 10px rgba(251, 191, 36, 0.5);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <!-- Top Navigation -->
+    <header class="border-b border-zinc-800 bg-[#09090b]/80 backdrop-blur-md sticky top-0 z-50">
+        <div class="max-w-[1600px] mx-auto px-6 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-lg bg-emerald-500/20 border border-emerald-500/50 flex items-center justify-center">
+                    <span class="material-symbols-outlined text-emerald-400 text-xl">insights</span>
+                </div>
+                <h1 class="text-xl font-bold tracking-tight text-white">FPL <span class="text-emerald-400">Engine</span></h1>
+            </div>
+            
+            <div class="flex items-center gap-4">
+                <div class="flex items-center gap-2 bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-1.5 focus-within:border-emerald-500/50 transition-colors">
+                    <span class="text-[10px] uppercase font-bold text-zinc-500">My ID</span>
+                    <input type="text" id="team-id" value="1471257" class="bg-transparent border-none outline-none text-sm font-semibold text-white w-20 text-right placeholder-zinc-700" placeholder="e.g. 12345" />
+                </div>
+                
+                <div class="hidden xl:flex items-center gap-2 bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-1.5 focus-within:border-emerald-500/50 transition-colors">
+                    <span class="text-[10px] uppercase font-bold text-zinc-500">Already Transferred?</span>
+                    <input type="text" id="override-sell" list="players-list" class="bg-transparent border-b border-red-500/50 outline-none text-xs font-semibold text-white w-20 text-center placeholder-zinc-700 mx-1" placeholder="Sell..." />
+                    <span class="material-symbols-outlined text-[14px] text-zinc-500">arrow_forward</span>
+                    <input type="text" id="override-buy" list="players-list" class="bg-transparent border-b border-emerald-500/50 outline-none text-xs font-semibold text-white w-20 text-center placeholder-zinc-700 mx-1" placeholder="Buy..." />
+                </div>
+                <select id="strategy-mode" class="bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-1.5 text-sm font-semibold text-white outline-none cursor-pointer hover:bg-zinc-800 transition-colors appearance-none pr-8 relative">
+                    <option value="neutral">Neutral Strategy</option>
+                    <option value="attack">Aggressive</option>
+                    <option value="risk_adjusted">Risk Adjusted</option>
+                </select>
+                <button onclick="solve()" id="solve-btn" class="bg-white hover:bg-zinc-200 text-black px-6 py-1.5 rounded-lg text-sm font-bold transition-all flex items-center gap-2 shadow-[0_0_15px_rgba(255,255,255,0.1)]">
+                    <span class="material-symbols-outlined text-[18px]">play_arrow</span>
+                    SOLVE
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-1 w-full max-w-[1600px] mx-auto px-6 py-8 grid grid-cols-1 lg:grid-cols-12 gap-8">
+        
+        <!-- LEFT COLUMN: Main Pitch & Bench -->
+        <div class="lg:col-span-8 flex flex-col gap-6">
+            
+            <!-- Context Row -->
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <h2 class="text-lg font-semibold text-white">Squad Projection</h2>
+                    <div id="target-gw-display" class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded text-xs font-bold uppercase tracking-wider">
+                        GW --
+                    </div>
+                </div>
+                <!-- Mini Stats -->
+                <div class="flex gap-4">
+                    <div class="flex flex-col items-end">
+                        <span class="text-[10px] text-zinc-500 uppercase font-bold">Proj Points</span>
+                        <span id="proj-points" class="font-mono text-emerald-400 font-bold">0.0</span>
+                    </div>
+                    <div class="flex flex-col items-end border-l border-zinc-800 pl-4">
+                        <span class="text-[10px] text-zinc-500 uppercase font-bold">Team Value</span>
+                        <span id="team-value" class="font-mono text-white font-bold">£0.0m</span>
+                    </div>
+                    <div class="flex flex-col items-end border-l border-zinc-800 pl-4">
+                        <span class="text-[10px] text-zinc-500 uppercase font-bold">Bank</span>
+                        <span id="team-bank" class="font-mono text-white font-bold">£0.0m</span>
+                    </div>
+                    <div class="flex flex-col items-end border-l border-zinc-800 pl-4">
+                        <span class="text-[10px] text-zinc-500 uppercase font-bold">Free Transfers</span>
+                        <input type="number" id="team-ft" class="bg-transparent border-b border-zinc-800 outline-none text-emerald-400 font-mono font-bold w-12 text-right hover:border-emerald-500/50 focus:border-emerald-500 transition-colors" min="0" max="5" value="1" />
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pitch -->
+            <div class="pitch-container rounded-2xl p-6 min-h-[600px] flex flex-col justify-between overflow-hidden relative z-0">
+                <div class="pitch-lines z-0"></div>
+                <div class="pitch-center-line z-0"></div>
+                <div class="pitch-center-circle z-0"></div>
+                
+                <div id="pos-GK" class="flex justify-center gap-6 z-10"></div>
+                <div id="pos-DEF" class="flex justify-center gap-6 z-10"></div>
+                <div id="pos-MID" class="flex justify-center gap-6 z-10"></div>
+                <div id="pos-FWD" class="flex justify-center gap-6 z-10"></div>
+            </div>
+
+            <!-- Horizontal Bench -->
+            <div class="surface-card rounded-2xl p-6">
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="text-sm font-semibold text-zinc-300">Bench Priority</h3>
+                    <span class="text-[10px] text-zinc-500 uppercase tracking-widest font-bold">Sorted by Expected Points</span>
+                </div>
+                <div id="bench-list" class="flex items-center justify-center gap-6">
+                    <!-- Bench renders here horizontally -->
+                    <div class="text-sm text-zinc-500 font-medium">Awaiting simulation...</div>
+                </div>
+            </div>
+            
+        </div>
+
+        <!-- RIGHT COLUMN: Sidebar (Chips, Transfers, Rivalry) -->
+        <div class="lg:col-span-4 flex flex-col gap-6">
+            
+            <!-- AI Chip Alert -->
+            <div id="chip-alert" class="surface-card rounded-2xl p-5 border-l-4 border-zinc-600 transition-all">
+                <div class="flex items-start gap-3">
+                    <span id="chip-icon" class="text-2xl mt-1 opacity-50">🛡️</span>
+                    <div>
+                        <h3 id="chip-title" class="text-[10px] font-bold uppercase tracking-widest text-zinc-500 mb-1">AI Chip Strategy</h3>
+                        <div id="chip-name" class="font-semibold text-white text-lg">HOLD CHIPS</div>
+                        <p id="chip-reason" class="text-xs text-zinc-400 mt-1 leading-relaxed">No mathematical advantage to playing a chip this week.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Transfers -->
+            <div class="surface-card rounded-2xl p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-sm font-semibold text-white flex items-center gap-2">
+                        <span class="material-symbols-outlined text-zinc-400 text-[18px]">swap_horiz</span>
+                        Optimal Transfers
+                    </h3>
+                    <div class="text-[10px] bg-zinc-800 text-zinc-400 px-2 py-1 rounded font-bold" id="hit-cost">Cost: 0 pts</div>
+                </div>
+                <div id="transfer-directives" class="flex flex-col gap-3">
+                    <div class="text-sm text-zinc-500 text-center py-8">Run solver to generate transfers.</div>
+                </div>
+            </div>
+
+
+
+        </div>
+    </main>
+
+    <script>
+        // Load players for autocomplete
+        fetch('http://localhost:8000/api/players')
+            .then(res => res.json())
+            .then(data => {
+                const list = document.getElementById('players-list');
+                data.forEach(p => {
+                    const option = document.createElement('option');
+                    option.value = p.name;
+                    list.appendChild(option);
+                });
+            })
+            .catch(err => console.error('Failed to load players for autocomplete'));
+
+        function renderPlayer(p, benchBadge = '') {
+            let badges = '';
+            let borderClass = p.is_captain ? 'border-yellow-500/50' : 'border-zinc-700 hover:border-emerald-500/50';
+            
+            if (p.is_captain) {
+                badges += `<div class="absolute -top-2 -right-2 w-5 h-5 rounded-full captain-badge flex items-center justify-center text-[10px] font-black z-20">C</div>`;
+            } else if (p.is_vice) {
+                badges += `<div class="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-zinc-300 text-black flex items-center justify-center text-[10px] font-black z-20">V</div>`;
+            }
+            
+            let topBadge = benchBadge ? `<div class="absolute -top-2 -left-2 bg-zinc-800 border border-zinc-600 text-zinc-300 text-[8px] font-bold px-1.5 py-0.5 rounded z-20">${benchBadge}</div>` : '';
+
+            return `
+                <div class="relative flex flex-col items-center group cursor-pointer w-20 md:w-24">
+                    ${badges}
+                    ${topBadge}
+                    <div class="w-full bg-[#18181b] border ${borderClass} rounded-xl p-2 relative overflow-hidden transition-all shadow-lg group-hover:-translate-y-1">
+                        <div class="text-[9px] text-zinc-500 font-bold uppercase tracking-widest text-center mb-0.5 truncate">${p.team}</div>
+                        <div class="text-xs font-bold text-zinc-100 text-center truncate">${p.name}</div>
+                        <div class="mt-1.5 bg-[#09090b] border border-zinc-800 text-emerald-400 text-xs font-mono font-bold py-0.5 text-center rounded">
+                            ${p.xP}
+                        </div>
+                        ${p.next_fixture ? `
+                        <div class="mt-1 w-full text-center py-0.5 rounded text-[8px] font-bold ${
+                            p.next_fdr <= 2 ? 'bg-emerald-600/90 text-white' : 
+                            (p.next_fdr === 3 ? 'bg-zinc-600/90 text-white' : 'bg-red-600/90 text-white')
+                        }">
+                            ${p.next_fixture}
+                        </div>
+                        ` : ''}
+                    </div>
+                </div>
+            `;
+        }
+
+
+
+        async function solve() {
+            const btn = document.getElementById('solve-btn');
+            const teamId = document.getElementById('team-id').value;
+
+            const mode = document.getElementById('strategy-mode').value;
+            const overrideSell = document.getElementById('override-sell').value;
+            const overrideBuy = document.getElementById('override-buy').value;
+            
+            if(!teamId) { alert("Please enter your Team ID"); return; }
+            
+            const originalContent = btn.innerHTML;
+            btn.innerHTML = '<span class="material-symbols-outlined animate-spin text-[18px]">refresh</span> SOLVING...';
+            
+            try {
+                let url = `http://localhost:8000/api/optimize/${teamId}?mode=${mode}`;
+                if (overrideSell && overrideBuy) {
+                    url += `&sell_override=${encodeURIComponent(overrideSell)}&buy_override=${encodeURIComponent(overrideBuy)}`;
+                }
+                const ftOverride = document.getElementById('team-ft').value;
+                if (ftOverride !== "") {
+                    url += `&ft_override=${parseInt(ftOverride)}`;
+                }
+                
+                const data = await fetch(url).then(r => r.json());
+
+                // Stats
+                document.getElementById('proj-points').innerText = data.projected_points;
+                document.getElementById('team-value').innerText = '£' + data.team_value + 'm';
+                document.getElementById('team-bank').innerText = '£' + data.bank + 'm';
+                document.getElementById('team-ft').value = data.ft;
+                document.getElementById('hit-cost').innerText = 'Cost: ' + data.hits + ' pts';
+
+                // Target GW
+                if (data.target_gw) {
+                    document.getElementById('target-gw-display').innerText = 'GW ' + data.target_gw;
+                }
+
+                // AI Chip Suggestion
+                const chipAlert = document.getElementById('chip-alert');
+                const chipTitle = document.getElementById('chip-title');
+                const chipName = document.getElementById('chip-name');
+                const chipReason = document.getElementById('chip-reason');
+                const chipIcon = document.getElementById('chip-icon');
+
+                if (data.ai_chip && data.ai_chip !== 'NONE') {
+                    chipAlert.className = "surface-card rounded-2xl p-5 border-l-4 border-yellow-500 bg-yellow-500/5 transition-all shadow-[0_0_30px_rgba(234,179,8,0.15)]";
+                    chipTitle.className = "text-[10px] font-bold uppercase tracking-widest text-yellow-500 mb-1";
+                    chipTitle.innerText = "🚨 ACTION REQUIRED";
+                    chipName.className = "font-semibold text-yellow-500 text-lg";
+                    chipName.innerText = data.ai_chip;
+                    chipIcon.innerText = "⚠️";
+                    
+                    if(data.ai_chip === 'WILDCARD') {
+                        chipReason.innerText = 'Team structure requires extensive hits. Play Wildcard now to maximize long-term EV.';
+                    } else if (data.ai_chip === 'BENCH BOOST') {
+                        chipReason.innerText = 'Your bench is projected for massive points. Deploy Bench Boost to capture this upside.';
+                    } else if (data.ai_chip === 'TRIPLE CAPTAIN') {
+                        chipReason.innerText = 'Your captain has a mathematically dominant fixture. Deploy Triple Captain for maximum return.';
+                    }
+                } else {
+                    chipAlert.className = "surface-card rounded-2xl p-5 border-l-4 border-zinc-600 transition-all";
+                    chipTitle.className = "text-[10px] font-bold uppercase tracking-widest text-zinc-500 mb-1";
+                    chipTitle.innerText = "AI Chip Strategy";
+                    chipName.className = "font-semibold text-white text-lg";
+                    chipName.innerText = "HOLD CHIPS";
+                    chipIcon.innerText = "🛡️";
+                    chipReason.innerText = "No mathematical advantage to playing a chip this week. Save them for Double Gameweeks.";
+                }
+
+                // Calculate Vice Captain dynamically (Highest xP non-captain)
+                if(data.starting_xi) {
+                    let highestXp = -1;
+                    let vcIndex = -1;
+                    for(let i=0; i<data.starting_xi.length; i++) {
+                        if(!data.starting_xi[i].is_captain && data.starting_xi[i].xP > highestXp) {
+                            highestXp = data.starting_xi[i].xP;
+                            vcIndex = i;
+                        }
+                    }
+                    if(vcIndex !== -1) data.starting_xi[vcIndex].is_vice = true;
+                }
+
+                // Render Pitch
+                if(data.starting_xi) {
+                    const gks = data.starting_xi.filter(p => p.pos === 'GK');
+                    const defs = data.starting_xi.filter(p => p.pos === 'DEF');
+                    const mids = data.starting_xi.filter(p => p.pos === 'MID');
+                    const fwds = data.starting_xi.filter(p => p.pos === 'FWD');
+                    
+                    document.getElementById('pos-GK').innerHTML = gks.map(p => renderPlayer(p)).join('');
+                    document.getElementById('pos-DEF').innerHTML = defs.map(p => renderPlayer(p)).join('');
+                    document.getElementById('pos-MID').innerHTML = mids.map(p => renderPlayer(p)).join('');
+                    document.getElementById('pos-FWD').innerHTML = fwds.map(p => renderPlayer(p)).join('');
+                }
+
+                // Render Bench Horizontally
+                if(data.bench) {
+                    document.getElementById('bench-list').innerHTML = data.bench.map(p => renderPlayer(p, p.order)).join('');
+                }
+
+                // Render Transfers
+                const transferContainer = document.getElementById('transfer-directives');
+                if(data.buy && data.sell && data.buy.length > 0) {
+                    let htmlStr = '';
+                    for(let i=0; i<data.buy.length; i++) {
+                        const b = data.buy[i];
+                        const s = data.sell[i];
+                        htmlStr += `
+                            <div class="bg-[#09090b] rounded-xl p-3 border border-zinc-800">
+                                <div class="flex items-center justify-between text-xs mb-2 pb-2 border-b border-zinc-800/50">
+                                    <span class="text-zinc-500 font-bold uppercase tracking-widest">${b.pos} TRANSFER</span>
+                                </div>
+                                <div class="flex items-center justify-between">
+                                    <!-- Sell -->
+                                    <div class="flex items-center gap-2 w-[40%]">
+                                        <div class="w-6 h-6 rounded-full bg-red-500/10 text-red-500 flex items-center justify-center">
+                                            <span class="material-symbols-outlined text-[14px]">remove</span>
+                                        </div>
+                                        <div class="truncate">
+                                            <div class="text-sm font-semibold text-zinc-300 truncate">${s.name}</div>
+                                            <div class="text-[10px] font-mono text-zinc-500">£${s.price}m</div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="text-zinc-700">
+                                        <span class="material-symbols-outlined text-sm">arrow_forward</span>
+                                    </div>
+
+                                    <!-- Buy -->
+                                    <div class="flex items-center gap-2 w-[40%] flex-row-reverse text-right">
+                                        <div class="w-6 h-6 rounded-full bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
+                                            <span class="material-symbols-outlined text-[14px]">add</span>
+                                        </div>
+                                        <div class="truncate">
+                                            <div class="text-sm font-semibold text-white truncate">${b.name}</div>
+                                            <div class="text-[10px] font-mono text-zinc-500">£${b.price}m</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }
+                    transferContainer.innerHTML = htmlStr;
+                } else {
+                    transferContainer.innerHTML = `
+                        <div class="bg-[#09090b] border border-zinc-800 rounded-xl p-6 text-center">
+                            <span class="material-symbols-outlined text-2xl text-zinc-600 mb-2">savings</span>
+                            <div class="font-semibold text-white tracking-widest uppercase text-xs">Roll Transfer</div>
+                            <div class="text-[10px] text-zinc-500 mt-1">Bank your free transfer for next week.</div>
+                        </div>
+                    `;
+                }
+
+
+
+            } catch(e) {
+                console.error(e);
+                alert("Error connecting to optimization server.");
+            }
+            btn.innerHTML = originalContent;
+        }
+    </script>
+    <datalist id="players-list"></datalist>
+</body>
+</html>
